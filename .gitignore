@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Build output
+dist/
+.vite/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Leftover scripts
+apply-dark.js
+apply-dark.mjs
+apply-dark-safe.js

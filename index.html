@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a2b5f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Family Dental" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Family Dental Clinic</title>
+
+    <!-- Preload critical fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
+        rel="stylesheet" />
+
+    <!-- FOUC prevention: hide until fonts + CSS are ready -->
+    <style>
+        #root {
+            opacity: 0;
+        }
+
+        #root.ready {
+            opacity: 1;
+            transition: opacity 0.15s ease-in;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+        // Reveal content only after Material Symbols icon font is fully loaded
+        function showApp() {
+            var r = document.getElementById('root');
+            if (r && !r.classList.contains('ready')) r.classList.add('ready');
+        }
+
+        function checkFonts() {
+            // Explicitly verify the icon font is available, not just the CSS
+            if (document.fonts && document.fonts.check('24px "Material Symbols Outlined"')) {
+                showApp();
+            } else {
+                // Poll every 100ms until the font is ready
+                setTimeout(checkFonts, 100);
+            }
+        }
+
+        // Start checking once fonts API says it's ready (CSS parsed)
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(checkFonts);
+        } else {
+            // Fallback for browsers without fonts API
+            setTimeout(showApp, 2000);
+        }
+
+        // Ultimate safety net — always show after 4s no matter what
+        setTimeout(showApp, 4000);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function () { });
+            });
+        }
+    </script>
+</body>
+
+</html>

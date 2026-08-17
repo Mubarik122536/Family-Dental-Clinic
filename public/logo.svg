@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Tooth shape -->
+  <path d="M100 30 C60 30, 30 60, 40 110 C45 140, 60 170, 75 180 C85 185, 90 170, 100 160 C110 170, 115 185, 125 180 C140 170, 155 140, 160 110 C170 60, 140 30, 100 30Z" fill="#1a2b5f" stroke="none"/>
+  <!-- Light blue accent curve -->
+  <path d="M65 50 C55 55, 40 80, 45 110 C50 135, 60 155, 70 165" fill="none" stroke="#56b8d9" stroke-width="12" stroke-linecap="round"/>
+  <!-- Adult circle -->
+  <circle cx="80" cy="22" r="12" fill="#56b8d9"/>
+  <!-- Child circle -->
+  <circle cx="115" cy="18" r="9" fill="#1a2b5f"/>
+</svg>

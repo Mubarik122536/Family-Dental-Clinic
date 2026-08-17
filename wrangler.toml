@@ -1,0 +1,16 @@
+name = "family-dental"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "family-dental-db"
+database_id = "2147b9a1-cda5-4b72-b15f-f8c2d90cc6ec"
+
+
+# ─────────────────────────────────────────────────────────
+# Local Dev Mock — defined in .dev.vars only (not deployed)
+# CF_ACCESS_MOCK = "true"
+# CF_ACCESS_MOCK_EMAIL = "admin@familydental.com"
+# ─────────────────────────────────────────────────────────
