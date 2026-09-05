@@ -1,16 +1,15 @@
 -- =============================================
--- Family Dental Clinic — Clean Unified Schema
--- WARNING: THIS WILL DELETE ALL EXISTING DATA
+-- Family Dental Clinic — Unified Database Schema
+-- Compatible with Cloudflare D1 (SQLite)
 -- =============================================
 
 -- 1. DROP ALL EXISTING TABLES
-DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS expenses;
+DROP TABLE IF EXISTS cash_transactions;
 DROP TABLE IF EXISTS tooth_records;
-DROP TABLE IF EXISTS tooth_records_new;
-DROP TABLE IF EXISTS invoice_items;
-DROP TABLE IF EXISTS invoices;
-DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS debt_payments;
 DROP TABLE IF EXISTS debts;
+DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS customer_treatments;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS treatments;
@@ -18,8 +17,14 @@ DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS tenants;
 
+-- Legacy cleanup
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS tooth_records_new;
+DROP TABLE IF EXISTS invoice_items;
+DROP TABLE IF EXISTS invoices;
+
 -- =============================================
--- 2. CREATE NEW TABLES
+-- 2. CREATE TABLES
 -- =============================================
 
 -- TENANTS table
@@ -41,7 +46,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- CUSTOMERS table (Cleaned: no email, address, credit_limit)
+-- CUSTOMERS table
 CREATE TABLE IF NOT EXISTS customers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -81,7 +86,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   UNIQUE(tenant_id, customer_id, visit_date)
 );
 
--- CUSTOMER_TREATMENTS (Replaces invoices/invoice_items)
+-- CUSTOMER_TREATMENTS (Clinical procedures and treatment ledger)
 CREATE TABLE IF NOT EXISTS customer_treatments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -112,7 +117,7 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- DEBTS
+-- DEBTS (Payment promises and outstanding balances)
 CREATE TABLE IF NOT EXISTS debts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -127,7 +132,7 @@ CREATE TABLE IF NOT EXISTS debts (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- DEBT PAYMENTS (partial payments on debts)
+-- DEBT PAYMENTS (Partial or full payments on debts)
 CREATE TABLE IF NOT EXISTS debt_payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -138,7 +143,7 @@ CREATE TABLE IF NOT EXISTS debt_payments (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- TOOTH_RECORDS (Dental Charting)
+-- TOOTH_RECORDS (Dental Charting / Odontogram)
 CREATE TABLE IF NOT EXISTS tooth_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -153,7 +158,7 @@ CREATE TABLE IF NOT EXISTS tooth_records (
   UNIQUE(customer_id, tooth_number)
 );
 
--- CASH_TRANSACTIONS (walk-in sales, auto-deleted monthly)
+-- CASH_TRANSACTIONS (Walk-in sales and direct counter payments)
 CREATE TABLE IF NOT EXISTS cash_transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id),
@@ -168,45 +173,70 @@ CREATE TABLE IF NOT EXISTS cash_transactions (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- INDEXES
+-- EXPENSES (Clinic operating expenditures)
+CREATE TABLE IF NOT EXISTS expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+  amount REAL NOT NULL,
+  description TEXT NOT NULL,
+  date TEXT NOT NULL DEFAULT (date('now')),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- =============================================
+-- 3. OPTIMIZED INDEXES
+-- =============================================
 CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_customers_tenant_name ON customers(tenant_id, name);
 CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone);
 CREATE INDEX IF NOT EXISTS idx_customers_tenant_status ON customers(tenant_id, status);
+
 CREATE INDEX IF NOT EXISTS idx_appointments_tenant ON appointments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_tenant_reminder_next ON appointments(tenant_id, reminder, next_visit);
 CREATE INDEX IF NOT EXISTS idx_appointments_tenant_next_visit ON appointments(tenant_id, next_visit);
 CREATE INDEX IF NOT EXISTS idx_appointments_tenant_customer ON appointments(tenant_id, customer_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_tenant_visit ON appointments(tenant_id, visit_date);
+
 CREATE INDEX IF NOT EXISTS idx_treatments_tenant ON treatments(tenant_id);
+
 CREATE INDEX IF NOT EXISTS idx_customer_treatments_tenant ON customer_treatments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_customer_treatments_customer ON customer_treatments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_treatments_tenant_customer ON customer_treatments(tenant_id, customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_treatments_tenant_date ON customer_treatments(tenant_id, treatment_date);
+
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_payments_tenant_customer ON payments(tenant_id, customer_id);
 CREATE INDEX IF NOT EXISTS idx_payments_tenant_status ON payments(tenant_id, status, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_debts_tenant ON debts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_debts_tenant_status_due ON debts(tenant_id, status, due_date);
+CREATE INDEX IF NOT EXISTS idx_debts_due_date ON debts(due_date);
 CREATE INDEX IF NOT EXISTS idx_debts_tenant_created ON debts(tenant_id, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_debt_payments_tenant_debt ON debt_payments(tenant_id, debt_id);
 CREATE INDEX IF NOT EXISTS idx_debt_payments_tenant_created ON debt_payments(tenant_id, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_cash_transactions_tenant ON cash_transactions(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_cash_transactions_date ON cash_transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_cash_transactions_tenant_created ON cash_transactions(tenant_id, created_at);
+
 CREATE INDEX IF NOT EXISTS idx_tooth_records_tenant_cust ON tooth_records(tenant_id, customer_id);
 
--- =============================================
--- 3. SEED INITIAL DATA
--- =============================================
-INSERT INTO tenants (id, name) VALUES (1, 'Family Dental Clinic');
+CREATE INDEX IF NOT EXISTS idx_expenses_tenant ON expenses(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+CREATE INDEX IF NOT EXISTS idx_expenses_tenant_date ON expenses(tenant_id, date);
 
-INSERT INTO users (email, name, role, tenant_id, password_hash) VALUES
+-- =============================================
+-- 4. SEED INITIAL DATA
+-- =============================================
+INSERT OR IGNORE INTO tenants (id, name) VALUES (1, 'Family Dental Clinic');
+
+INSERT OR IGNORE INTO users (email, name, role, tenant_id, password_hash) VALUES
   ('admin@familydental.com', 'Admin User', 'admin', 1, 'pbkdf2:e5f3ceba3e823ce4a1e2376ce6d61251:d631af89659d1ca25c0e587d6d0a2d792fd99918b31a7527fbd68cf0f9950e85'),
   ('staff@familydental.com', 'Staff User', 'staff', 1, '');
 
-INSERT INTO treatments (id, tenant_id, name, category, description, price, duration) VALUES
+INSERT OR IGNORE INTO treatments (id, tenant_id, name, category, description, price, duration) VALUES
   (1, 1, 'Dental Cleaning', 'General', 'Professional teeth cleaning', 80.00, 30),
   (2, 1, 'Teeth Whitening', 'Cosmetic', 'Professional whitening treatment', 350.00, 60),
   (3, 1, 'Root Canal', 'Endodontics', 'Root canal therapy', 750.00, 90),
