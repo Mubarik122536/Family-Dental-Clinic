@@ -9,23 +9,23 @@ export default function Receipt({ customer, items, payment, isFirstPayment, actu
     const shortNum = receiptNum.split('-')[1];
 
     // Totals
-    const itemsTotal = items.reduce((s, item) => s + (parseFloat(item.price) * (item.qty || 1)), 0);
-    const paymentAmount = payment?.amount || itemsTotal;
+    const itemsTotal = (items || []).reduce((s, item) => s + (parseFloat(item.price || 0) * (item.qty || 1)), 0);
+    const paymentAmount = payment?.amount !== undefined ? parseFloat(payment.amount) : itemsTotal;
 
     // Follow-up payment: payment present AND it's explicitly not the first payment
     const isFollowUpPayment = payment && isFirstPayment === false;
 
     // For follow-up payments, use the passed actualBalance; for first payment, calculate from items
-    const accountCharge = isFollowUpPayment
-        ? Math.max(0, actualBalance !== undefined ? actualBalance : 0)
+    const accountCharge = actualBalance !== undefined
+        ? Math.max(0, actualBalance)
         : Math.max(0, itemsTotal - paymentAmount);
     const today = new Date().toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
 
-    // displayItems and receiptTotal depend on follow-up status
-    const displayItems = isFollowUpPayment
-        ? [{ name: 'Payment on Account', qty: 1, price: paymentAmount }]
-        : items;
-    const receiptTotal = isFollowUpPayment ? paymentAmount : itemsTotal;
+    // Always preserve and display real treatment items and quantities
+    const displayItems = (items && items.length > 0)
+        ? items
+        : [{ name: 'Payment on Account', qty: 1, price: paymentAmount }];
+    const receiptTotal = itemsTotal > 0 ? itemsTotal : paymentAmount;
 
     const printCSS = `
         @page { size: A5 portrait; margin: 0; }
@@ -156,7 +156,7 @@ export default function Receipt({ customer, items, payment, isFirstPayment, actu
                                     </div>
                                     <div style={{ ...S.headerSide, textAlign: 'right' }}>
                                         <p style={S.receiptTitle}>Receipt #{shortNum}</p>
-                                        <p style={{ fontWeight: 'bold', marginTop: '3px' }}>{new Date().toLocaleDateString('en-US')}</p>
+                                        <p style={{ fontWeight: 'bold', marginTop: '3px' }}>{payment?.date ? new Date(payment.date).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US')}</p>
                                     </div>
                                 </div>
                             </div>
